@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import Groq from "groq-sdk";
 
 function buildInstructions(mode, target, tone) {
     const base = "You are a helpful writing assistant. Be clear, consise, and your responses should be easily reusable. Do not add extra commentary.";
@@ -24,19 +24,31 @@ export async function POST(req) {
             return Response.json({error: "Text required"}, {status: 400});
         }
 
-        const client = new OpenAI({apiKey: process.env.OPENAI_API_KEY});
+        const client = new Groq({apiKey: process.env.GROQ_API_KEY});
 
-        const aiResponse = await client.responses.create({
-            model: "gpt-5-mini",
-            instructions: buildInstructions(mode, target, tone),
-            input: cleanedInput
+        const aiResponse = await client.chat.completions.create({
+            model: "llama-3.3-70b-versatile",
+            messages: [
+                {
+                    role: "system",
+                    content: buildInstructions(mode, target, tone),
+                },
+                {
+                    role: "user",
+                    content: cleanedInput,
+                },
+            ],
+            temperature: 0.7,
         });
 
-        return Response.json({output: aiResponse.output_text || ""});
+        return Response.json({
+            output:
+                aiResponse.choices?.[0]?.message?.content || "",
+        });
     }
     catch(err) {
         return Response.json({
-            error: "Server error",
+            error: `Server error ${err}`,
             status: 500
         })
     }
